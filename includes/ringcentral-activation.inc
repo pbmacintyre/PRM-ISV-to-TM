@@ -9,15 +9,16 @@ require_once (ABSPATH . 'wp-admin/includes/upgrade.php');
 /* ================================= */
 /* Create ringcentral_control table  */
 /* ================================= */
+
 $ringcentral_sql = "CREATE TABLE `ringcentral_control` (
   `ringcentral_control_id` int(11) NOT NULL AUTO_INCREMENT,
   `client_id` varchar(50) NOT NULL,
   `embedded_phone` tinyint(4) NOT NULL,
   `client_secret` varchar(50) NOT NULL,
+  `jwt_key` text NOT NULL,
   `ringcentral_user_name` varchar(50) NOT NULL,
   `ringcentral_extension` tinyint(4) NOT NULL,
-  `ringcentral_password` varchar(50) NOT NULL,
-  `ringcentral_sandbox` TINYINT NOT NULL,    
+  `ringcentral_password` varchar(50) NOT NULL,      
   `ringcentral_team_chat` INT NOT NULL,    
   PRIMARY KEY (`ringcentral_control_id`)
 ) ";
@@ -29,10 +30,9 @@ dbDelta($ringcentral_sql);
 $row_exists = $wpdb->get_var($wpdb->prepare("SELECT `ringcentral_control_id` 
     FROM `ringcentral_control` WHERE `ringcentral_control_id` = %d", 1) );
 if (!$row_exists) {
-    $wpdb->insert('ringcentral_control', 
+    $wpdb->insert('ringcentral_control',
         array(
             'ringcentral_control_id' => 1,
-            'ringcentral_sandbox' => 1,
             )
         );
 }

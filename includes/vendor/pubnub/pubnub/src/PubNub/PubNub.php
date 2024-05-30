@@ -7,35 +7,59 @@ use PubNub\Builders\SubscribeBuilder;
 use PubNub\Callbacks\SubscribeCallback;
 use PubNub\Endpoints\Access\Audit;
 use PubNub\Endpoints\Access\Grant;
+use PubNub\Endpoints\Access\GrantToken;
 use PubNub\Endpoints\Access\Revoke;
+use PubNub\Endpoints\Access\RevokeToken;
 use PubNub\Endpoints\ChannelGroups\AddChannelToChannelGroup;
 use PubNub\Endpoints\ChannelGroups\ListChannelsInChannelGroup;
 use PubNub\Endpoints\ChannelGroups\RemoveChannelFromChannelGroup;
 use PubNub\Endpoints\ChannelGroups\RemoveChannelGroup;
 use PubNub\Endpoints\History;
+use PubNub\Endpoints\HistoryDelete;
+use PubNub\Endpoints\MessageCount;
+use PubNub\Endpoints\Objects\Channel\SetChannelMetadata;
+use PubNub\Endpoints\Objects\Channel\GetChannelMetadata;
+use PubNub\Endpoints\Objects\Channel\GetAllChannelMetadata;
+use PubNub\Endpoints\Objects\Channel\RemoveChannelMetadata;
+use PubNub\Endpoints\Objects\UUID\SetUUIDMetadata;
+use PubNub\Endpoints\Objects\UUID\GetUUIDMetadata;
+use PubNub\Endpoints\Objects\UUID\GetAllUUIDMetadata;
+use PubNub\Endpoints\Objects\UUID\RemoveUUIDMetadata;
+use PubNub\Endpoints\Objects\Member\SetMembers;
+use PubNub\Endpoints\Objects\Member\GetMembers;
+use PubNub\Endpoints\Objects\Member\RemoveMembers;
+use PubNub\Endpoints\Objects\Membership\SetMemberships;
+use PubNub\Endpoints\Objects\Membership\GetMemberships;
+use PubNub\Endpoints\Objects\Membership\RemoveMemberships;
 use PubNub\Endpoints\Presence\GetState;
 use PubNub\Endpoints\Presence\HereNow;
 use PubNub\Endpoints\Presence\SetState;
 use PubNub\Endpoints\Presence\WhereNow;
 use PubNub\Endpoints\PubSub\Publish;
+use PubNub\Endpoints\PubSub\Signal;
 use PubNub\Endpoints\Push\AddChannelsToPush;
 use PubNub\Endpoints\Push\ListPushProvisions;
 use PubNub\Endpoints\Push\RemoveChannelsFromPush;
 use PubNub\Endpoints\Push\RemoveDeviceFromPush;
 use PubNub\Endpoints\Time;
+use PubNub\Exceptions\PubNubConfigurationException;
 use PubNub\Managers\BasePathManager;
 use PubNub\Managers\SubscriptionManager;
+use PubNub\Managers\TelemetryManager;
+use PubNub\Managers\TokenManager;
+use Psr\Log\LoggerInterface;
+use Psr\Log\LoggerAwareInterface;
+use Psr\Log\NullLogger;
 
-
-class PubNub
+class PubNub implements LoggerAwareInterface
 {
-    const SDK_VERSION = "4.0.0";
-    const SDK_NAME = "PubNub-PHP";
+    protected const SDK_VERSION = "6.1.3";
+    protected const SDK_NAME = "PubNub-PHP";
 
     public static $MAX_SEQUENCE = 65535;
 
     /** @var PNConfiguration */
-    protected $configuration;
+    protected PNConfiguration $configuration;
 
     /** @var  BasePathManager */
     protected $basePathManager;
@@ -43,11 +67,19 @@ class PubNub
     /** @var  SubscriptionManager */
     protected $subscriptionManager;
 
-    /** @var  Logger */
-    protected $logger;
+    /** @var TelemetryManager */
+    protected $telemetryManager;
+
+    /** @var TokenManager */
+    protected $tokenManager;
+
+    /** @var  LoggerInterface */
+    protected LoggerInterface $logger;
 
     /** @var  int $nextSequence */
     protected $nextSequence = 0;
+
+    protected ?CryptoModule $cryptoModule = null;
 
     /**
      * PNConfiguration constructor.
@@ -56,10 +88,13 @@ class PubNub
      */
     public function __construct($initialConfig)
     {
+        $this->validateConfig($initialConfig);
         $this->configuration = $initialConfig;
         $this->basePathManager = new BasePathManager($initialConfig);
         $this->subscriptionManager = new SubscriptionManager($this);
-        $this->logger = new Logger('PubNub');
+        $this->telemetryManager = new TelemetryManager();
+        $this->tokenManager = new TokenManager();
+        $this->logger = new NullLogger();
     }
 
     /**
@@ -68,7 +103,19 @@ class PubNub
      */
     public static function demo()
     {
-        return new static(PNConfiguration::demoKeys());
+        return new PubNub(PNConfiguration::demoKeys());
+    }
+
+    /**
+     * @param $configuration PNConfiguration
+     *
+     * @throws PubNubConfigurationException
+     */
+    private function validateConfig(PNConfiguration $configuration)
+    {
+        if (empty($configuration->getUuid())) {
+            throw new PubNubConfigurationException('UUID should not be empty');
+        }
     }
 
     /**
@@ -93,6 +140,22 @@ class PubNub
     public function publish()
     {
         return new Publish($this);
+    }
+
+    /**
+     * @return Publish
+     */
+    public function fire()
+    {
+        return (new Publish($this))->shouldStore(false)->replicate(false);
+    }
+
+    /**
+     * @return Signal
+     */
+    public function signal()
+    {
+        return new Signal($this);
     }
 
     /**
@@ -133,6 +196,30 @@ class PubNub
     public function grant()
     {
         return new Grant($this);
+    }
+
+    /**
+     * @return PNAccessManagerTokenResult
+     */
+    public function parseToken($token)
+    {
+        return (new GrantToken($this))->parseToken($token);
+    }
+
+    /**
+     * @return GrantToken
+     */
+    public function grantToken()
+    {
+        return new GrantToken($this);
+    }
+
+    /**
+     * @return RevokeToken
+     */
+    public function revokeToken()
+    {
+        return new RevokeToken($this);
     }
 
     /**
@@ -186,7 +273,7 @@ class PubNub
     /**
      * @return Time
      */
-    public function time()
+    public function time(): Time
     {
         return new Time($this);
     }
@@ -224,6 +311,118 @@ class PubNub
     }
 
     /**
+     * @return SetChannelMetadata
+     */
+    public function setChannelMetadata()
+    {
+        return new SetChannelMetadata($this);
+    }
+
+    /**
+     * @return GetChannelMetadata
+     */
+    public function getChannelMetadata()
+    {
+        return new GetChannelMetadata($this);
+    }
+
+    /**
+     * @return GetAllChannelMetadata
+     */
+    public function getAllChannelMetadata()
+    {
+        return new GetAllChannelMetadata($this);
+    }
+
+    /**
+     * @return RemoveChannelMetadata
+     */
+    public function removeChannelMetadata()
+    {
+        return new RemoveChannelMetadata($this);
+    }
+
+    /**
+     * @return SetUUIDMetadata
+     */
+    public function setUUIDMetadata()
+    {
+        return new SetUUIDMetadata($this);
+    }
+
+    /**
+     * @return GetUUIDMetadata
+     */
+    public function getUUIDMetadata()
+    {
+        return new GetUUIDMetadata($this);
+    }
+
+    /**
+     * @return GetAllUUIDMetadata
+     */
+    public function getAllUUIDMetadata()
+    {
+        return new GetAllUUIDMetadata($this);
+    }
+
+    /**
+     * @return RemoveUUIDMetadata
+     */
+    public function removeUUIDMetadata()
+    {
+        return new RemoveUUIDMetadata($this);
+    }
+
+    /**
+     * @return GetMembers
+     */
+    public function getMembers()
+    {
+        return new GetMembers($this);
+    }
+
+    /**
+     * @return SetMembers
+     */
+    public function setMembers()
+    {
+        return new SetMembers($this);
+    }
+
+    /**
+     * @return RemoveMembers
+     */
+    public function removeMembers()
+    {
+        return new RemoveMembers($this);
+    }
+
+    /**
+     * @return GetMemberships
+     */
+    public function getMemberships()
+    {
+        return new GetMemberships($this);
+    }
+
+    /**
+     * @return SetMemberships
+     */
+    public function setMemberships()
+    {
+        return new SetMemberships($this);
+    }
+
+    /**
+     * @return RemoveMemberships
+     */
+    public function removeMemberships()
+    {
+        return new RemoveMemberships($this);
+    }
+
+    /**
      * @return int
      */
     public function timestamp()
@@ -234,7 +433,7 @@ class PubNub
     /**
      * @return string
      */
-    static public function getSdkVersion()
+    public static function getSdkVersion()
     {
         return static::SDK_VERSION;
     }
@@ -242,7 +441,7 @@ class PubNub
     /**
      * @return string
      */
-    static public function getSdkName()
+    public static function getSdkName()
     {
         return static::SDK_NAME;
     }
@@ -250,7 +449,7 @@ class PubNub
     /**
      * @return string
      */
-    static public function getSdkFullName()
+    public static function getSdkFullName()
     {
         $fullName = static::SDK_NAME . "/" . static::SDK_VERSION;
 
@@ -284,9 +483,9 @@ class PubNub
     }
 
     /**
-     * @param Logger $logger
+     * @param LoggerInterface $logger
      */
-    public function setLogger($logger)
+    public function setLogger(LoggerInterface $logger): void
     {
         $this->logger = $logger;
     }
@@ -308,6 +507,30 @@ class PubNub
     }
 
     /**
+     * @return HistoryDelete
+     */
+    public function deleteMessages()
+    {
+        return new HistoryDelete($this);
+    }
+
+    /**
+     * @return MessageCount
+     */
+    public function messageCounts()
+    {
+        return new MessageCount($this);
+    }
+
+    /**
+     * @return TelemetryManager
+     */
+    public function getTelemetryManager()
+    {
+        return $this->telemetryManager;
+    }
+
+    /**
      * @return int unique sequence identifier
      */
     public function getSequenceId()
@@ -319,5 +542,35 @@ class PubNub
         }
 
         return $this->nextSequence;
+    }
+
+    /**
+     * @return string Token previously set by $this->setToken
+     */
+    public function getToken()
+    {
+        return $this->tokenManager->getToken();
+    }
+
+    /**
+     * @param string $token Token obtained by GetToken
+     */
+    public function setToken($token)
+    {
+        return $this->tokenManager->setToken($token);
+    }
+
+    public function getCrypto(): CryptoModule
+    {
+        if ($this->cryptoModule) {
+            return $this->cryptoModule;
+        } else {
+            return $this->configuration->getCrypto();
+        }
+    }
+
+    public function setCrypto(CryptoModule $cryptoModule)
+    {
+        $this->cryptoModule = $cryptoModule;
     }
 }

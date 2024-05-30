@@ -9,13 +9,7 @@
 /* ========= */
 Function show_form($message, $label = "", $color = "#008EC2") {	
 	
-	global $print_again, $wpdb;    	
-	
-	if (empty($_SERVER['HTTPS']) || $_SERVER['HTTPS'] == 'off') { ?>
-	<div style="margin-top: 5px; width: 93%; max-width: 786px; border: 1px solid #900; padding: 10px; background: #ffe6e6; font-weight: bold; text-align: center;">
-		To comply with CTIA guidelines, please enable HTTPS and save your settings<br />(this will allow for your users to opt out with the STOP keyword).
-	</div>	
-	<?php } ?>
+	global $print_again, $wpdb;  ?>
 
 	<form action="" method="post" >
 	<table class="TableOverride" >
@@ -30,7 +24,10 @@ Function show_form($message, $label = "", $color = "#008EC2") {
 	
 	$result_rc = $wpdb->get_row( $wpdb->prepare("SELECT * FROM `ringcentral_control` WHERE `ringcentral_control_id` = %d", 1) );
 
-    $response = list_tm_teams() ;
+//    $response = list_tm_teams() ;
+    $response = "" ;
+    $sdk = ringcentral_sdk();
+    echo_spaces("SDK Connection", $sdk);
 
     if ($response == false) {
         $message = "Failed to retrieve Team names";
@@ -39,45 +36,7 @@ Function show_form($message, $label = "", $color = "#008EC2") {
 
     ?>
         </td>
-	</tr>	
-	<tr class="TableOverride">
-		<td class="left_col">
-			<p style='display: inline; <?php if ($label == "embedded_phone") echo "color:red"; ?>' >Use Embedded Phone?</p>
-			
-			<?php echo ringcentral_build_help("embedded_phone") ; ?>
-						
-		</td>
-		<td class="right_col"><input type="checkbox" name="embedded_phone" <?php 
-		if ($print_again) { 
-		    if ($_POST['embedded_phone'] == "on") {
-		      echo 'CHECKED';
-		    } 
-          } else {             
-              if ($result_rc->embedded_phone == 1) {
-                  echo 'CHECKED' ;
-                }
-          }
-            ?>></td>
 	</tr>
-    <tr class="TableOverride">
-        <td class="left_col">
-            <p style='display: inline; <?php if ($label == "ringcentral_sandbox") echo "color:red"; ?>' >Use the RingCentral SANDBOX SDK?</p>  
-            
-            <?php echo ringcentral_build_help("ringcentral_sandbox") ; ?>
-                      
-        </td>
-        <td class="right_col"><input type="checkbox" name="ringcentral_sandbox" <?php 
-        if ($print_again) { 
-            if ($_POST['ringcentral_sandbox'] == "on") {
-              echo 'CHECKED';
-            } 
-          } else {             
-              if ($result_rc->ringcentral_sandbox  == 1) {
-                  echo 'CHECKED' ;
-                }
-          }
-            ?>></td>
-    </tr>
     <tr class="TableOverride">
         <td class="left_col">
             <p style='display: inline; <?php if ($label == "chat_id") echo "color:red"; ?>' >Available Team Chats:</p>
@@ -156,60 +115,20 @@ Function show_form($message, $label = "", $color = "#008EC2") {
           }
             ?>" > 
             </td>
-	</tr>	
-	<tr class="TableOverride">
-		<td class="left_col" valign="top">
-		<p style='display: inline; <?php if ($label == "ringcentral_user_name") echo "color:red"; ?>' >RingCentral Number:</p>
-		<p style='color: red; display: inline'>*</p>
-        
-        <?php echo ringcentral_build_help("username") ; ?>
-              
-		</td>
-		<td class="right_col" valign="top"><input type="text" name="ringcentral_user_name" value="<?php 
-		  if ($print_again) {
-		      echo sanitize_text_field($_POST['ringcentral_user_name']);
-          } else {             
-              if ($result_rc->ringcentral_user_name) {
-                echo $result_rc->ringcentral_user_name ;
-              } else {
-                echo "&nbsp;" ;  
-              }
-          }
-            ?>"><br />
-			<div style="margin-top: 5px; width: 93%; border: 1px solid #004F6D; padding: 5px; background: #DAF0F8;">To prevent your number from being blocked, please use a Toll Free, SMS enabled phone number.  SMS charges may apply. [<a href="https://medium.com/ringcentral-developers/power-your-communications-with-toll-free-sms-cf8fdc77bc6e" target="_blank">Learn More</a>]</div>
-		
-		</td>
-	</tr>	
-	<tr class="TableOverride">
-		<td class="left_col">
-			<p style='display: inline; <?php if ($label == "ringcentral_extension") echo "color:red"; ?>' >RingCentral Extension:</p>
-			<p style='color: red; display: inline'>*</p>
-		</td>
-		<td class="right_col"><input type="text" name="ringcentral_extension" value="<?php 
-		  if ($print_again) {
-		      echo sanitize_text_field($_POST['ringcentral_extension']);
-          } else {             
-              if ($result_rc->ringcentral_extension) { echo $result_rc->ringcentral_extension ; } 
-          }
-            ?>"></td>
-	</tr>	
-	<tr class="TableOverride">
-		<td class="left_col">
-			<p style='display: inline; <?php if ($label == "ringcentral_password") echo "color:red"; ?>' >RingCentral Password:</p>
-			<p style='color: red; display: inline'>*</p>
-		</td>
-		<td class="right_col"><input type="password" name="ringcentral_password" id="myRCPassword" value="<?php 
-		  if ($print_again) {
-		      echo sanitize_text_field($_POST['ringcentral_password']);
-          } else {        
-              if ($result_rc->ringcentral_password) {
-//                echo $result_rc->ringcentral_password ;
-                echo ringcentral_decrypt($result_rc->ringcentral_password) ;
-              }
-          }
-            ?>"></td>
 	</tr>
-    <tr class="TableOverride">
+        <tr class="TableOverride">
+            <td class="left_col">
+                <p style='display: inline; <?php if ($label == "client_secret") echo "color:red"; ?>' >JWT Key:</p>
+                <p style='color: red; display: inline'>*</p>
+            </td>
+            <td class="right_col"><textarea name="jwt_key"><?php
+                    if ($print_again) {
+                        echo strip_tags($_POST['jwt_key']);
+                    }
+                    ?></textarea>
+            </td>
+        </tr>
+        <tr class="TableOverride">
 		<td colspan="2" align="center">			
 			<br/>
 			<?php 
@@ -231,20 +150,12 @@ Function check_form() {
 	
 	$label = "" ;
 	$message = "" ;
-	
-	if ($_POST['ringcentral_sandbox'] == "on") {
-	    $sandbox = 1;
-	} else {
-	    $sandbox = 0;
-	}    
-	
+
 	$rc_handshake = array(
-	    "client_id"        => sanitize_text_field($_POST['client_id']),
-	    "client_secret"    => sanitize_text_field($_POST['client_secret']),
-	    "user_name"        => sanitize_text_field($_POST['ringcentral_user_name']) ,
-	    "extension"        => sanitize_text_field($_POST['ringcentral_extension']) ,
-	    "password"         => sanitize_text_field($_POST['ringcentral_password']) , 	    
-	    "sandbox"          => $sandbox 	    
+	    "client_id"     => sanitize_text_field($_POST['client_id']),
+	    "client_secret" => sanitize_text_field($_POST['client_secret']),
+	    "jwt_key"       => sanitize_text_field($_POST['jwt_key']) ,
+
 	);
 
 // 	/* data integrity checks */	

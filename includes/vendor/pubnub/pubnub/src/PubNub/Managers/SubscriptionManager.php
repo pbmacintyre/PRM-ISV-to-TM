@@ -2,7 +2,6 @@
 
 namespace PubNub\Managers;
 
-
 use PubNub\Exceptions\PubNubResponseParsingException;
 use PubNub\Models\Consumer\PubSub\PNPresenceEventResult;
 use PubNub\Builders\DTO\SubscribeOperation;
@@ -12,16 +11,17 @@ use PubNub\Endpoints\Presence\Leave;
 use PubNub\Exceptions\PubNubUnsubscribeException;
 use PubNub\Models\Server\PresenceEnvelope;
 use PubNub\Models\Server\SubscribeMessage;
+use PubNub\Models\Server\MessageType;
 use PubNub\Endpoints\PubSub\Subscribe;
 use PubNub\Enums\PNStatusCategory;
 use PubNub\Exceptions\PubNubConnectionException;
 use PubNub\Exceptions\PubNubServerException;
 use PubNub\Models\Consumer\PubSub\PNMessageResult;
+use PubNub\Models\Consumer\PubSub\PNSignalMessageResult;
 use PubNub\Models\Consumer\PubSub\SubscribeEnvelope;
 use PubNub\Models\ResponseHelpers\PNStatus;
 use PubNub\PubNub;
 use PubNub\PubNubUtil;
-
 
 class SubscriptionManager
 {
@@ -40,6 +40,8 @@ class SubscriptionManager
     /** @var  bool */
     protected $subscriptionStatusAnnounced;
 
+    public StateManager $subscriptionState;
+
     /**
      * SubscriptionManager constructor.
      * @param PubNub $pubnub
@@ -54,7 +56,7 @@ class SubscriptionManager
 
     public function start()
     {
-        while (True) {
+        while (true) {
             $combinedChannels = $this->subscriptionState->prepareChannelList(true);
             $combinedChannelGroups = $this->subscriptionState->prepareChannelGroupList(true);
 
@@ -135,7 +137,7 @@ class SubscriptionManager
                 }
             }
 
-            $this->timetoken = (int) $result->getMetadata()->getTimetoken();
+            $this->timetoken = $result->getMetadata()->getTimetoken();
             $this->region = (int) $result->getMetadata()->getRegion();
         }
     }
@@ -237,33 +239,52 @@ class SubscriptionManager
 
             $pnPresenceResult = new PNPresenceEventResult(
                 $presencePayload->getAction(),
-                $strippedPresenceChannel,
-                $strippedPresenceSubscription,
-                $publishMetadata->getPublishTimetoken(),
-                $presencePayload->getOccupancy(),
                 $presencePayload->getUuid(),
                 $presencePayload->getTimestamp(),
+                $presencePayload->getOccupancy(),
+                $strippedPresenceSubscription,
+                $strippedPresenceChannel,
+                $publishMetadata->getPublishTimetoken(),
                 $presencePayload->getData()
             );
 
             $this->listenerManager->announcePresence($pnPresenceResult);
         } else {
-            $extractedMessage = $this->processMessage($message->getPayload());
+            $messageError = null;
+            try {
+                $extractedMessage = $this->processMessage($message->getPayload());
+            } catch (PubNubResponseParsingException $exception) {
+                $extractedMessage = $message->getPayload();
+                $messageError = $exception;
+            }
             $publisher = $message->getIssuingClientId();
 
             if ($extractedMessage === null) {
                 $this->pubnub->getLogger()->debug("unable to parse payload on #processIncomingMessages");
             }
 
-            $pnMessageResult = new PNMessageResult(
-                $extractedMessage,
-                $channel,
-                $subscriptionMatch,
-                $publishMetadata->getPublishTimetoken(),
-                $publisher
-            );
+            if (MessageType::SIGNAL == $message->getMessageType()) {
+                $pnSignalResult = new PNSignalMessageResult(
+                    $extractedMessage,
+                    $channel,
+                    $subscriptionMatch,
+                    $publishMetadata->getPublishTimetoken(),
+                    $publisher
+                );
 
-            $this->listenerManager->announceMessage($pnMessageResult);
+                $this->listenerManager->announceSignal($pnSignalResult);
+            } else {
+                $pnMessageResult = new PNMessageResult(
+                    $extractedMessage,
+                    $channel,
+                    $subscriptionMatch,
+                    $publishMetadata->getPublishTimetoken(),
+                    $publisher,
+                    $messageError
+                );
+
+                $this->listenerManager->announceMessage($pnMessageResult);
+            }
         }
     }
 

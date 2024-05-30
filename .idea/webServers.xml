@@ -3,7 +3,7 @@
   <component name="WebServers">
     <option name="servers">
       <webServer id="694356cf-a952-4366-94f8-3c70629c6a18" name="PRM to TM" url="https://ringcent.paladin-bs.com/">
-        <fileTransfer rootFolder="/public_html/ringcent/wp-content/plugins/PRM_to_TM" host="ftp.paladin-bs.com" port="21">
+        <fileTransfer rootFolder="/public_html/ringcent/wp-content/plugins/PRM-to-TM" host="ftp.paladin-bs.com" port="21">
           <advancedOptions>
             <advancedOptions dataProtectionLevel="Private" passiveMode="true" shareSSLContext="true" />
           </advancedOptions>
