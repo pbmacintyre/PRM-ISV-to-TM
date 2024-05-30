@@ -3,7 +3,7 @@ Contributors:      pbmacintyre
 Tags:              Ring Central Communications API tools
 Requires at least: 4.1
 Tested up to:      5.9
-Stable tag:        1.5
+Stable tag:        1.7
 Requires PHP:      5.6
 License:           GPLv2 or later
 License URI:       https://www.gnu.org/licenses/gpl-2.0.html
@@ -42,6 +42,10 @@ Yes.
 1. 
  
 == Changelog ==
+= 1.7 =
+* Changed SDK authentication to JWT
+* Updated DB structure
+
 = 1.5 =
 * Added Admin control screen with settings options
 
