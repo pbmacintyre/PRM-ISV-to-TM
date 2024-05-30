@@ -44,7 +44,7 @@ Yes.
 == Changelog ==
 = 1.7 =
 * Changed SDK authentication to JWT
-* Updated DB structure
+* Updated DB structure to match new structure
 
 = 1.5 =
 * Added Admin control screen with settings options
