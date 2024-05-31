@@ -1,6 +1,6 @@
 <?php
 /*
-Plugin Name: A PRM to TM
+Plugin Name: PRM to TM
 Plugin URI:  https://ringcentral.com/
 Description: RingCentral Plugin for sending notices to Team Messaging app
 Author:      Peter MacIntyre

@@ -42,7 +42,7 @@ Yes.
 1. 
  
 == Changelog ==
-= 1.7 =
+= 1.8 =
 * Changed SDK authentication to JWT
 * Updated DB structure to match new structure
 
