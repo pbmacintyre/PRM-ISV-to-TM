@@ -12,14 +12,10 @@ require_once (ABSPATH . 'wp-admin/includes/upgrade.php');
 
 $ringcentral_sql = "CREATE TABLE `ringcentral_control` (
   `ringcentral_control_id` int(11) NOT NULL AUTO_INCREMENT,
-  `client_id` varchar(50) NOT NULL,
-  `embedded_phone` tinyint(4) NOT NULL,
+  `client_id` varchar(50) NOT NULL,  
   `client_secret` varchar(50) NOT NULL,
-  `jwt_key` text NOT NULL,
-  `ringcentral_user_name` varchar(50) NOT NULL,
-  `ringcentral_extension` tinyint(4) NOT NULL,
-  `ringcentral_password` varchar(50) NOT NULL,      
-  `ringcentral_team_chat` INT NOT NULL,    
+  `jwt_key` text NOT NULL,        
+  `chat_id` varchar(50) NOT NULL,    
   PRIMARY KEY (`ringcentral_control_id`)
 ) ";
 dbDelta($ringcentral_sql);

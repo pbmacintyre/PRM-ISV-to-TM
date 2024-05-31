@@ -9,7 +9,7 @@ Author URI:  https://paladin-bs.com/peter-macintyre/
 Details URI: https://paladin-bs.com
 License:     GPL2
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
-Copyright (C) 2022 Paladin Business Solutions
+Copyright (C) 2024 Paladin Business Solutions
 
 This plugin sends a message to the Team Messaging Application into a Group
 telling the Group that a new PRM Access Request form has been submitted.
@@ -21,9 +21,6 @@ A PARTICULAR PURPOSE. See the GNU General Public License for more details.
 See License URI for full details.
 
 */
-
-//error_reporting(E_ALL & ~(E_WARNING | E_NOTICE));
-//ini_set('display_errors', 1);
 
 /* ============================== */
 /* Set RingCental Constant values */
